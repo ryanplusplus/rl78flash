@@ -24,6 +24,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <IOKit/serial/ioss.h>
 
 extern int verbose_level;
 
@@ -55,7 +56,7 @@ int serial_open(const char *port)
         options.c_cc[VTIME] = 1;
         tcsetattr(fd, TCSANOW, &options);
         usleep(1000);
-        ioctl(fd, TCFLSH, TCIOFLUSH);
+        tcflush(fd, TCIOFLUSH);
     }
     return fd;
 }
@@ -73,33 +74,13 @@ const baudrate_code_t baudrates[] =
     { 57600,   B57600 },
     { 115200,  B115200 },
     { 230400,  B230400 },
-    { 500000,  B500000 },
-    { 921600,  B921600 },
-    { 1000000, B1000000 },
     { 0, 0}
 };
 
 int serial_set_baud(port_handle_t fd, int baud)
 {
-    const baudrate_code_t *pbaud = baudrates;
-    while (0 != pbaud->baudrate)
-    {
-        if (pbaud->baudrate == baud)
-        {
-            break;
-        }
-        ++pbaud;
-    }
-    if (0 == pbaud->code)
-    {
-        fprintf(stderr, "Failed to set baudrate %u\n", baud);
-        return -1;
-    }
-    struct termios options;
-    tcgetattr(fd, &options);
-    cfsetispeed(&options, pbaud->code);
-    cfsetospeed(&options, pbaud->code);
-    return tcsetattr(fd, TCSANOW, &options);
+    speed_t speed = baud;
+    return ioctl(fd, IOSSIOSPEED, &speed);
 }
 
 int serial_set_parity(port_handle_t fd, int enable, int odd_parity)
@@ -120,7 +101,7 @@ int serial_set_parity(port_handle_t fd, int enable, int odd_parity)
 
 int serial_set_dtr(port_handle_t fd, int level)
 {
-    int command;
+    unsigned long command;
     const int dtr = TIOCM_DTR;
     if (level)
     {
@@ -135,7 +116,7 @@ int serial_set_dtr(port_handle_t fd, int level)
 
 int serial_set_rts(port_handle_t fd, int level)
 {
-    int command;
+    unsigned long command;
     const int rts = TIOCM_RTS;
     if (level)
     {
@@ -150,7 +131,7 @@ int serial_set_rts(port_handle_t fd, int level)
 
 int serial_set_txd(port_handle_t fd, int level)
 {
-    int command;
+    unsigned long command;
     if (level)
     {
         command = TIOCCBRK;
