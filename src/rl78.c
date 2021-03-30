@@ -60,6 +60,8 @@ int rl78_reset_init(port_handle_t fd, int wait, int baud, int mode, float voltag
                (mode & (MODE_UART | MODE_RESET)) + 1,
                (mode & MODE_INVERT_RESET) ? " with RESET inversion" : "");
     }
+    // CH340 requires DTR to be set before it can be cleared so we appease it here
+    rl78_set_reset(fd, mode, 1);                            /* RESET -> 1 */
     rl78_set_reset(fd, mode, 0);                            /* RESET -> 0 */
     serial_set_txd(fd, 0);                                  /* TOOL0 -> 0 */
     if (wait)
